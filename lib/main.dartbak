@@ -1,0 +1,1225 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:ui';
+import 'package:intl/intl.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
+
+void main() => runApp(const MyApp());
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'ABES Portal',
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF0A0A0A),
+        textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).apply(bodyColor: Colors.white),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF6366F1),
+          secondary: Color(0xFF06B6D4),
+        ),
+      ),
+      home: const SplashScreen(),
+    );
+  }
+}
+
+class AnimatedBackground extends StatefulWidget {
+  final Widget child;
+  const AnimatedBackground({Key? key, required this.child}) : super(key: key);
+
+  @override
+  State<AnimatedBackground> createState() => _AnimatedBackgroundState();
+}
+
+class _AnimatedBackgroundState extends State<AnimatedBackground> with TickerProviderStateMixin {
+  late final AnimationController _controller1 = AnimationController(duration: const Duration(seconds: 8), vsync: this)..repeat();
+  late final AnimationController _controller2 = AnimationController(duration: const Duration(seconds: 12), vsync: this)..repeat();
+  late final AnimationController _controller3 = AnimationController(duration: const Duration(seconds: 15), vsync: this)..repeat();
+
+  @override
+  void dispose() {
+    _controller1.dispose();
+    _controller2.dispose();
+    _controller3.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0A0A0A), Color(0xFF1A1A2E), Color(0xFF16213E), Color(0xFF0A0A0A)],
+              ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: _controller1,
+            builder: (context, _) => Positioned(
+              left: 100 + 50 * sin(_controller1.value * 2 * pi),
+              top: 150 + 30 * cos(_controller1.value * 2 * pi),
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    const Color(0xFF6366F1).withOpacity(0.3),
+                    const Color(0xFF6366F1).withOpacity(0.1),
+                    Colors.transparent,
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: _controller2,
+            builder: (context, _) => Positioned(
+              right: 80 + 40 * cos(_controller2.value * 2 * pi),
+              top: 300 + 60 * sin(_controller2.value * 2 * pi),
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    const Color(0xFF06B6D4).withOpacity(0.4),
+                    const Color(0xFF06B6D4).withOpacity(0.1),
+                    Colors.transparent,
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: _controller3,
+            builder: (context, _) => Positioned(
+              left: 50 + 70 * cos(_controller3.value * 2 * pi),
+              bottom: 200 + 40 * sin(_controller3.value * 2 * pi),
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    const Color(0xFF8B5CF6).withOpacity(0.3),
+                    const Color(0xFF8B5CF6).withOpacity(0.1),
+                    Colors.transparent,
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          widget.child,
+        ],
+      ),
+    );
+  }
+}
+
+class GlassCard extends StatelessWidget {
+  final Widget child;
+  final double? width, height;
+  final EdgeInsets? padding, margin;
+  final BorderRadius? borderRadius;
+
+  const GlassCard({Key? key, required this.child, this.width, this.height, this.padding, this.margin, this.borderRadius})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      margin: margin,
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: borderRadius ?? BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)],
+        ),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))], // Enhanced shadow
+      ),
+      child: child,
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+  late final AnimationController _fadeController = AnimationController(
+    duration: const Duration(milliseconds: 1000),
+    vsync: this,
+  )..forward();
+  late final Animation<double> _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
+  late final Animation<double> _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLogin();
+  }
+
+  Future<void> _checkLogin() async {
+    await Future.delayed(const Duration(seconds: 2));
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => token?.isNotEmpty == true ? const Dashboard() : const LoginScreen()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBackground(
+      child: Center(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: GlassCard(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+                    ),
+                    child: const Icon(Icons.school, size: 40, color: Colors.white),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('ABES Portal', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins-Bold')),
+                  const SizedBox(height: 8),
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Text(
+                      'Your Gateway to Academic Excellence',
+                      style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).colorScheme.primary),
+                    strokeWidth: 3,
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({Key? key}) : super(key: key);
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin { // Add TickerProviderStateMixin
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  String _errorMessage = '';
+  late final AnimationController _errorController = AnimationController(
+    duration: const Duration(milliseconds: 300),
+    vsync: this,
+  );
+  late final Animation<Offset> _errorSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
+      .animate(CurvedAnimation(parent: _errorController, curve: Curves.easeOut));
+
+  @override
+  void didUpdateWidget(covariant LoginScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_errorMessage.isNotEmpty) {
+      _errorController.forward();
+    } else {
+      _errorController.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _errorController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = 'Enter both fields');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.post(
+        Uri.parse("https://abes.platform.simplifii.com/api/v1/admin/authenticate"),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Origin': 'https://abes.web.simplifii.com',
+          'Referer': 'https://abes.web.simplifii.com/',
+        },
+        body: 'username=$username&password=$password',
+      );
+
+      debugPrint('Login API status: ${response.statusCode}');
+      debugPrint('Login API response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final token = json['token'];
+        if (token != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', token);
+          await prefs.setString('name', json['response']?["name"] ?? username);
+          final studentId = json['sub']?.toString() ?? username;
+          await prefs.setString('student_id', studentId);
+          debugPrint('Stored student_id: $studentId');
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const Dashboard()));
+        } else {
+          setState(() => _errorMessage = 'Invalid credentials or token missing');
+        }
+      } else {
+        setState(() => _errorMessage = 'Login failed: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Login error: $e');
+      setState(() => _errorMessage = 'Error: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBackground(
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: GlassCard(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+                    ),
+                    child: const Icon(Icons.lock_outline, size: 40, color: Colors.white),
+                  ),
+                  const SizedBox(height: 30),
+                  const Text('Hey There!', style: TextStyle(fontFamily: "Poppins-Bold", fontSize: 28, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('Sign in to continue', style: TextStyle(fontSize: 16, fontFamily: "Poppins-SemiBold", color: Colors.white.withOpacity(0.7))),
+                  const SizedBox(height: 40),
+                  _buildTextField(controller: _usernameController, label: 'Username', icon: Icons.person_outline),
+                  const SizedBox(height: 20),
+                  _buildTextField(controller: _passwordController, label: 'Password', icon: Icons.lock_outline, isPassword: true),
+                  const SizedBox(height: 30),
+                  if (_errorMessage.isNotEmpty)
+                    SlideTransition(
+                      position: _errorSlideAnimation,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(child: Text(_errorMessage, style: const TextStyle(color: Colors.red))),
+                            GestureDetector(
+                              onTap: () => setState(() => _errorMessage = ''),
+                              child: Icon(Icons.close, color: Colors.red.withOpacity(0.7), size: 20),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_errorMessage.isNotEmpty) const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        padding: EdgeInsets.zero,
+                        elevation: 0,
+                      ),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: _isLoading
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({required TextEditingController controller, required String label, required IconData icon, bool isPassword = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular'),
+          prefixIcon: Icon(icon, color: Colors.white.withOpacity(0.7)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(16),
+          floatingLabelBehavior: FloatingLabelBehavior.auto,
+        ),
+      ),
+    );
+  }
+}
+
+
+class Dashboard extends StatefulWidget {
+  const Dashboard({Key? key}) : super(key: key);
+
+  @override
+  State<Dashboard> createState() => _DashboardState();
+}
+
+class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
+  String name = '', dept = '', section = '', semester = '', batch = '';
+  bool isWifiOn = false;
+  late AnimationController _wifiController;
+  late Animation<double> _wifiAnimation;
+  late AnimationController _avatarController;
+  late Animation<double> _avatarScale;
+  final GlobalKey<_AttendanceScreenState> _attendanceKey = GlobalKey<_AttendanceScreenState>(); // Explicitly typed GlobalKey
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+    _wifiController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _wifiAnimation = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _wifiController, curve: Curves.easeInOut));
+    _avatarController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500))..forward();
+    _avatarScale = Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: _avatarController, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _wifiController.dispose();
+    _avatarController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+    final name = prefs.getString('name') ?? 'Student';
+    final studentId = prefs.getString('student_id') ?? '';
+
+    setState(() {
+      this.name = name;
+    });
+
+    if (token.isEmpty || studentId.isEmpty) {
+      debugPrint('No token or student_id found for fetching user info');
+      setState(() {
+        dept = 'Unknown';
+        section = 'Unknown';
+        semester = 'Unknown';
+        batch = 'Unknown';
+      });
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse("https://abes.platform.simplifii.com/api/v1/custom/getCFMappedWithStudentID?embed_attendance_summary=1"),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Origin': 'https://abes.web.simplifii.com',
+          'Referer': 'https://abes.web.simplifii.com/',
+        },
+      );
+
+      debugPrint('User info API status: ${response.statusCode}');
+      debugPrint('User info API response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final fetchedData = json['response']?['data'] ?? [];
+        if (fetchedData.isNotEmpty) {
+          final item = fetchedData[0];
+          final dept = item['dept']?.toString() ?? 'Unknown';
+          final section = item['section']?.toString() ?? 'Unknown';
+          final semester = item['semester']?.toString() ?? 'Unknown';
+          final batch = item['batch']?.toString() ?? 'Unknown';
+
+          setState(() {
+            this.dept = dept;
+            this.section = section;
+            this.semester = semester;
+            this.batch = batch;
+          });
+
+          await prefs.setString('dept', dept);
+          await prefs.setString('section', section);
+          await prefs.setString('semester', semester);
+          await prefs.setString('batch', batch);
+
+          debugPrint('Stored user info - dept: $dept, section: $section, semester: $semester, batch: $batch');
+        } else {
+          debugPrint('No data found in API response');
+          setState(() {
+            dept = 'Unknown';
+            section = 'Unknown';
+            semester = 'Unknown';
+            batch = 'Unknown';
+          });
+        }
+      } else {
+        debugPrint('Failed to load user info: ${response.statusCode}');
+        setState(() {
+          dept = 'Unknown';
+          section = 'Unknown';
+          semester = 'Unknown';
+          batch = 'Unknown';
+        });
+      }
+    } catch (e) {
+      debugPrint('User info fetch error: $e');
+      setState(() {
+        dept = 'Unknown';
+        section = 'Unknown';
+        semester = 'Unknown';
+        batch = 'Unknown';
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    await (await SharedPreferences.getInstance()).clear();
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+  }
+
+  void _toggleWifi() {
+    setState(() {
+      isWifiOn = !isWifiOn;
+      isWifiOn ? _wifiController.forward() : _wifiController.reverse();
+    });
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    return hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  }
+
+  Future<void> _refreshDashboard() async {
+    await Future.wait([
+      _loadUserInfo(),
+      _attendanceKey.currentState?.fetchAttendance() ?? Future.value(), // Safely call fetchAttendance
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final firstName = name.split(" ").first;
+    return AnimatedBackground(
+      child: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          color: const Color(0xFF6366F1),
+          backgroundColor: Colors.white.withOpacity(0.1),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          ScaleTransition(
+                            scale: _avatarScale,
+                            child: CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              child: Text(
+                                firstName.isNotEmpty ? firstName[0].toUpperCase() : 'S',
+                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_getGreeting(), style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular')),
+                              Text(firstName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, fontFamily: 'Poppins-Bold')),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _toggleWifi,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
+                              border: Border.all(color: Colors.white.withOpacity(isWifiOn ? 0.4 : 0.2)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isWifiOn ? Theme.of(context).colorScheme.primary.withOpacity(0.3) : Colors.transparent,
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: AnimatedBuilder(
+                              animation: _wifiAnimation,
+                              builder: (context, _) => Icon(
+                                isWifiOn ? Icons.wifi : Icons.wifi_off,
+                                color: Colors.white.withOpacity(0.7 + _wifiAnimation.value * 0.3),
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _logout,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
+                              border: Border.all(color: Colors.red.withOpacity(0.4)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.2),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.logout, color: Colors.red, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                StudentInfoCard(dept: dept, section: section, semester: semester, batch: batch),
+                const SizedBox(height: 30),
+                AttendanceScreen(key: _attendanceKey),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class StudentInfoCard extends StatelessWidget {
+  final String dept, section, semester, batch;
+  const StudentInfoCard({
+    Key? key,
+    required this.dept,
+    required this.section,
+    required this.semester,
+    required this.batch,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 2.5,
+            children: [
+              _buildInfoItem(context, Icons.school, 'Department', dept),
+              _buildInfoItem(context, Icons.class_, 'Section', section),
+              _buildInfoItem(context, Icons.timeline, 'Semester', semester),
+              _buildInfoItem(context, Icons.group, 'Batch', batch),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoItem(BuildContext context, IconData icon, String label, String value) {
+    return GestureDetector(
+      onTap: () {}, // For hover effect
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+              ),
+              child: Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.6), fontFamily: 'Poppins-Regular')),
+                  Text(
+                    value,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins-SemiBold'),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AttendanceScreen extends StatefulWidget {
+  const AttendanceScreen({Key? key}) : super(key: key);
+
+  @override
+  State<AttendanceScreen> createState() => _AttendanceScreenState();
+}
+
+class _AttendanceScreenState extends State<AttendanceScreen> {
+  List<dynamic> data = [];
+  Map<int, List<dynamic>> dailyAttendanceMap = {};
+  bool isLoading = true;
+  String error = '';
+  double targetAttendance = 75.0;
+  int overallPresent = 0;
+  int overallTotal = 0;
+  double overallPercentage = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAttendance();
+  }
+
+  Future<void> fetchAttendance() async {
+    setState(() => isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      debugPrint('Fetching attendance with token: $token');
+      if (token.isEmpty) {
+        setState(() {
+          error = "No token found";
+          isLoading = false;
+        });
+        return;
+      }
+      final response = await http.get(
+        Uri.parse("https://abes.platform.simplifii.com/api/v1/custom/getCFMappedWithStudentID?embed_attendance_summary=1"),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Origin': 'https://abes.web.simplifii.com',
+          'Referer': 'https://abes.web.simplifii.com/',
+        },
+      );
+      debugPrint('Attendance API status: ${response.statusCode}');
+      debugPrint('Attendance API response: ${response.body}');
+      if (response.statusCode == 200) {
+        final fetchedData = jsonDecode(response.body)['response']['data'];
+        final totalEntry = fetchedData.firstWhere(
+              (item) => item['cdata']['course_code'] == 'Total',
+          orElse: () => null,
+        );
+        setState(() {
+          data = fetchedData;
+          if (totalEntry != null) {
+            overallPresent = totalEntry['attendance_summary']['Present'] as int? ?? 0;
+            overallTotal = totalEntry['attendance_summary']['Total'] as int? ?? 0;
+            overallPercentage = overallTotal > 0 ? (overallPresent / overallTotal * 100) : 0.0;
+          } else {
+            overallPresent = 0;
+            overallTotal = 0;
+            overallPercentage = 0.0;
+          }
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          error = "Failed to load attendance: ${response.statusCode}";
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Attendance fetch error: $e');
+      setState(() {
+        error = "Error: $e";
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<List<dynamic>> fetchDailyAttendance(int cfId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      final studentId = prefs.getString('student_id') ?? '';
+      debugPrint('Fetching daily attendance for cf_id: $cfId, student_id: $studentId, token: $token');
+      if (token.isEmpty) {
+        debugPrint('Error: No token found in SharedPreferences');
+        return [];
+      }
+      final response = await http.get(
+        Uri.parse(
+            "https://abes.platform.simplifii.com/api/v1/cards?type=Attendance&sort_by=+datetime1&equalto___fk_student=$studentId&equalto___cf_id=$cfId"),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Origin': 'https://abes.web.simplifii.com',
+          'Referer': 'https://abes.web.simplifii.com/',
+        },
+      );
+      debugPrint('Daily attendance API status: ${response.statusCode}');
+      debugPrint('Daily attendance API response: ${response.body}');
+      if (response.statusCode == 200) {
+        final List<dynamic> attendanceData = jsonDecode(response.body)['response']['data'] ?? [];
+        debugPrint('Daily attendance data count: ${attendanceData.length}');
+        final now = DateTime.now();
+        final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+        final filteredData = attendanceData.where((entry) {
+          try {
+            final dateFormatted = entry['date_formatted']?.toString() ?? '';
+            debugPrint('Raw date_formatted: $dateFormatted');
+            if (dateFormatted.isEmpty) {
+              debugPrint('Empty date_formatted for entry: $entry');
+              return false;
+            }
+            final dateParts = dateFormatted.split(' ');
+            final dateStr = dateParts.length > 2 ? dateParts.last : '';
+            debugPrint('Parsing date: $dateStr');
+            if (dateStr.isEmpty) {
+              debugPrint('Invalid date format for entry: $entry');
+              return false;
+            }
+            final date = DateFormat('dd/MMM/yyyy').parse(dateStr);
+            final isRecent = date.isAfter(thirtyDaysAgo) || date.isAtSameMomentAs(thirtyDaysAgo);
+            debugPrint('Date $dateStr isRecent: $isRecent');
+            return isRecent;
+          } catch (e) {
+            debugPrint('Date parsing error for entry $entry: $e');
+            return false;
+          }
+        }).toList();
+        debugPrint('Filtered daily attendance count: ${filteredData.length}');
+        return filteredData;
+      } else {
+        debugPrint('Daily attendance API failed: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Daily attendance fetch error: $e');
+      return [];
+    }
+  }
+
+  void showDetails(BuildContext context, Map<String, dynamic> item) async {
+    debugPrint('Showing details for course: ${item['cdata']['course_name']} (cf_id: ${item['id']})');
+    final dailyAttendance = dailyAttendanceMap[item['id']] ?? await fetchDailyAttendance(item['id']);
+    debugPrint('Daily attendance for popup: $dailyAttendance');
+    setState(() {
+      dailyAttendanceMap[item['id']] = dailyAttendance;
+    });
+    showDialog(
+      context: context,
+      builder: (_) => Stack(
+        children: [
+          Container(color: Colors.black.withOpacity(0.6)),
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: Dialog(
+              backgroundColor: Colors.transparent,
+              child: GlassCard(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['cdata']['course_name'] ?? 'Unknown Course',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins-Bold'),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildDetailRow('Course Code', item['cdata']['course_code'] ?? 'N/A'),
+                      _buildDetailRow('Faculty', item['faculty_name'] ?? 'N/A'),
+                      _buildDetailRow('Students', item['cdata']['students_count_formatted']?.toString() ?? 'N/A'),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Daily Attendance (Last 30 Days)',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Poppins-SemiBold'),
+                      ),
+                      const SizedBox(height: 10),
+                      if (dailyAttendance.isEmpty)
+                        Text('No attendance data available.', style: TextStyle(color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular'))
+                      else
+                        SizedBox(
+                          height: 200,
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: dailyAttendance.length,
+                            itemBuilder: (context, index) {
+                              final entry = dailyAttendance[index];
+                              final dateFormatted = entry['date_formatted']?.toString() ?? 'N/A';
+                              final parts = dateFormatted.split(' ');
+                              final date = parts.length > 2 ? parts.last : 'N/A';
+                              final time = parts.length > 2 ? parts.sublist(0, parts.length - 1).join(' ') : 'N/A';
+                              final status = entry['status']?.toString() ?? 'Unknown';
+                              debugPrint('Rendering attendance entry $index: $date, $time, $status');
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(date, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Poppins-SemiBold')),
+                                        Text(time, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular')),
+                                      ],
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: status == 'Present' ? const Color(0xFF10B981).withOpacity(0.2) : const Color(0xFFEF4444).withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        status,
+                                        style: TextStyle(
+                                          color: status == 'Present' ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                                          fontWeight: FontWeight.w600,
+                                          fontFamily: 'Poppins-SemiBold',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1).withOpacity(0.8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text("Close", style: TextStyle(fontFamily: 'Poppins-SemiBold')),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular')),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Poppins-SemiBold')),
+        ],
+      ),
+    );
+  }
+
+  LinearGradient _getProgressGradient(double percentage) {
+    if (percentage >= 75) {
+      return const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]);
+    } else if (percentage >= 60) {
+      return const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]);
+    } else {
+      return const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]);
+    }
+  }
+
+  String _calculateAttendanceGoal() {
+    final currentPercentage = overallPercentage;
+    if (currentPercentage >= targetAttendance) {
+      final classesCanMiss = ((overallPresent * 100 / targetAttendance) - overallTotal).floor();
+      return classesCanMiss > 0 ? 'Can miss $classesCanMiss classes' : 'At target';
+    } else {
+      final classesNeeded = ((targetAttendance * overallTotal / 100) - overallPresent).ceil();
+      return classesNeeded > 0 ? 'Attend $classesNeeded classes' : 'At target';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return Center(child: GlassCard(child: const CircularProgressIndicator(color: Color(0xFF6366F1))));
+    }
+    if (error.isNotEmpty) {
+      return GlassCard(child: Text(error, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center));
+    }
+    if (data.isEmpty) {
+      return GlassCard(child: Text("No attendance data found.", style: TextStyle(color: Colors.white.withOpacity(0.7)), textAlign: TextAlign.center));
+    }
+
+    return Column(
+      children: [
+        GlassCard(
+          padding: const EdgeInsets.all(12),
+          width: double.infinity,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    height: 120,
+                    child: TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0, end: overallPercentage / 100),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOut,
+                      builder: (context, value, child) => CircularProgressIndicator(
+                        value: value,
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          overallPercentage >= 75 ? const Color(0xFF10B981) : overallPercentage >= 60 ? const Color(0xFFF97316) : const Color(0xFFEF4444),
+                        ),
+                        strokeWidth: 8,
+                      ),
+                    ),
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text("${overallPercentage.toStringAsFixed(1)}%", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins-Bold')),
+                      Text(
+                        overallPercentage >= 75 ? "Good" : "Low",
+                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Present: $overallPresent / $overallTotal",
+                style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Target:', style: TextStyle(fontSize: 14, fontFamily: 'Poppins-Regular')),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 150,
+                    child: SliderTheme(
+                      data: SliderThemeData(
+                        trackHeight: 8,
+                        activeTrackColor: Theme.of(context).colorScheme.primary,
+                        inactiveTrackColor: Colors.white.withOpacity(0.2),
+                        thumbColor: Theme.of(context).colorScheme.primary,
+                        overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                        trackShape: const RoundedRectSliderTrackShape(),
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10, elevation: 2),
+                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+                      ),
+                      child: Slider(
+                        value: targetAttendance,
+                        min: 50,
+                        max: 100,
+                        divisions: 50,
+                        label: '${targetAttendance.round()}%',
+                        onChanged: (value) => setState(() => targetAttendance = value),
+                      ),
+                    ),
+                  ),
+                  Text('${targetAttendance.round()}%', style: const TextStyle(fontSize: 14, fontFamily: 'Poppins-Regular')),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _calculateAttendanceGoal(),
+                style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular'),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        ...data.where((item) => item['cdata']['course_code'] != 'Total').map((item) {
+          final percentage = double.tryParse(item['attendance_summary']['Percent']?.replaceAll('%', '') ?? '0') ?? 0;
+          return GestureDetector(
+            onTap: () => showDetails(context, item),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item['cdata']['course_name'] ?? '',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins-Bold'),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: _getProgressGradient(percentage),
+                          ),
+                          child: Text(
+                            "${percentage.toStringAsFixed(1)}%",
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins-SemiBold'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Present: ${item['attendance_summary']['Present'] ?? 0} / ${item['attendance_summary']['Total'] ?? 0}",
+                      style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular'),
+                    ),
+                    const SizedBox(height: 12),
+                    TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0, end: percentage / 100),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOut,
+                      builder: (context, value, child) => LinearProgressIndicator(
+                        value: value,
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          percentage >= 75 ? const Color(0xFF10B981) : percentage >= 60 ? const Color(0xFFF97316) : const Color(0xFFEF4444),
+                        ),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+}
