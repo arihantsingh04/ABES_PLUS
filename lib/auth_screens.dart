@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
-import 'dashboard_screens.dart';
+import 'screens/dashboard_screens.dart';
+import 'widgets/glass_card.dart';
 
 class AnimatedBackground extends StatefulWidget {
   final Widget child;
@@ -105,36 +106,6 @@ class _AnimatedBackgroundState extends State<AnimatedBackground> with TickerProv
   }
 }
 
-class GlassCard extends StatelessWidget {
-  final Widget child;
-  final double? width, height;
-  final EdgeInsets? padding, margin;
-  final BorderRadius? borderRadius;
-
-  const GlassCard({Key? key, required this.child, this.width, this.height, this.padding, this.margin, this.borderRadius})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      margin: margin,
-      padding: padding ?? const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: borderRadius ?? BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)],
-        ),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: child,
-    );
-  }
-}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);

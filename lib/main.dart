@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_screens.dart';
-import 'dashboard_screens.dart';
+import 'screens/dashboard_screens.dart';
+import 'widgets/glass_card.dart';
 
 void main() => runApp(const MyApp());
 
@@ -13,7 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ABES Portal',
+      title: 'ABES+',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF0A0A0A),
         textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).apply(bodyColor: Colors.white),
@@ -90,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: Text(
-                      'Your Gateway to Academic Excellence',
+                      'Track you ABES Life.',
                       style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7), fontFamily: 'Poppins-Regular'),
                     ),
                   ),
