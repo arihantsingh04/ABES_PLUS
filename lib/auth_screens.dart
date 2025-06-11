@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,105 +6,29 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'screens/dashboard_screens.dart';
 import 'widgets/glass_card.dart';
 
-class AnimatedBackground extends StatefulWidget {
+class AnimatedBackground extends StatelessWidget {
   final Widget child;
   const AnimatedBackground({Key? key, required this.child}) : super(key: key);
 
   @override
-  State<AnimatedBackground> createState() => _AnimatedBackgroundState();
-}
-
-class _AnimatedBackgroundState extends State<AnimatedBackground> with TickerProviderStateMixin {
-  late final AnimationController _controller1 = AnimationController(duration: const Duration(seconds: 8), vsync: this)..repeat();
-  late final AnimationController _controller2 = AnimationController(duration: const Duration(seconds: 12), vsync: this)..repeat();
-  late final AnimationController _controller3 = AnimationController(duration: const Duration(seconds: 15), vsync: this)..repeat();
-
-  @override
-  void dispose() {
-    _controller1.dispose();
-    _controller2.dispose();
-    _controller3.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF0A0A0A), Color(0xFF1A1A2E), Color(0xFF16213E), Color(0xFF0A0A0A)],
-              ),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF0D1123),
+              const Color(0xFF000000),
+            ],
           ),
-          AnimatedBuilder(
-            animation: _controller1,
-            builder: (context, _) => Positioned(
-              left: 100 + 50 * sin(_controller1.value * 2 * pi),
-              top: 150 + 30 * cos(_controller1.value * 2 * pi),
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(colors: [
-                    const Color(0xFF6366F1).withOpacity(0.3),
-                    const Color(0xFF6366F1).withOpacity(0.1),
-                    Colors.transparent,
-                  ]),
-                ),
-              ),
-            ),
-          ),
-          AnimatedBuilder(
-            animation: _controller2,
-            builder: (context, _) => Positioned(
-              right: 80 + 40 * cos(_controller2.value * 2 * pi),
-              top: 300 + 60 * sin(_controller2.value * 2 * pi),
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(colors: [
-                    const Color(0xFF06B6D4).withOpacity(0.4),
-                    const Color(0xFF06B6D4).withOpacity(0.1),
-                    Colors.transparent,
-                  ]),
-                ),
-              ),
-            ),
-          ),
-          AnimatedBuilder(
-            animation: _controller3,
-            builder: (context, _) => Positioned(
-              left: 50 + 70 * cos(_controller3.value * 2 * pi),
-              bottom: 200 + 40 * sin(_controller3.value * 2 * pi),
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(colors: [
-                    const Color(0xFF8B5CF6).withOpacity(0.3),
-                    const Color(0xFF8B5CF6).withOpacity(0.1),
-                    Colors.transparent,
-                  ]),
-                ),
-              ),
-            ),
-          ),
-          widget.child,
-        ],
+        ),
+        child: child,
       ),
     );
   }
 }
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -123,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
     duration: const Duration(milliseconds: 300),
     vsync: this,
   );
-  late final Animation<Offset> _errorSlideAnimation = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
+  late final Animation<Offset> _errorSlideAnimation = Tween<Offset>(begin: const Offset(3.0, 0.5), end: Offset.zero)
       .animate(CurvedAnimation(parent: _errorController, curve: Curves.easeOut));
 
   @override
@@ -174,8 +97,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
           await prefs.setString('token', token);
           await prefs.setString('name', json['response']?["name"] ?? username);
           final studentId = json['sub']?.toString() ?? username;
+          final studentNumber = json['response']?['id']?.toString() ?? studentId;
           await prefs.setString('student_id', studentId);
-          debugPrint('Stored student_id: $studentId');
+          await prefs.setString('student_number', studentNumber);
+          debugPrint('Stored student_id: $studentId, student_number: $studentNumber');
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const Dashboard()));
         } else {
           setState(() => _errorMessage = 'Invalid credentials or token missing');
@@ -252,12 +177,12 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                         padding: EdgeInsets.zero,
-                        elevation: 0,
+                        elevation: 3,
                       ),
                       child: Ink(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF06B6D4)]),
-                          borderRadius: BorderRadius.circular(15),
+                          borderRadius: BorderRadius.circular(55),
                         ),
                         child: Container(
                           alignment: Alignment.center,

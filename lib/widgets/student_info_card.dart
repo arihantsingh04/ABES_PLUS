@@ -5,16 +5,17 @@ import 'glass_card.dart';
 class StudentInfoCard extends StatelessWidget {
   final String dept, section, semester, batch;
   const StudentInfoCard({
-    Key? key,
+    super.key,
     required this.dept,
     required this.section,
     required this.semester,
     required this.batch,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
+      borderRadius: BorderRadius.circular(40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,7 +45,7 @@ class StudentInfoCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(30),
           gradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
           border: Border.all(color: Colors.white.withOpacity(0.2)),
           boxShadow: [

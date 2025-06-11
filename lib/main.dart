@@ -8,7 +8,7 @@ import 'widgets/glass_card.dart';
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +19,8 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF0A0A0A),
         textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).apply(bodyColor: Colors.white),
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF6366F1),
-          secondary: Color(0xFF06B6D4),
+          primary:  Color(0xFF2C67F2),
+          secondary: Color(0xFF2C67F2),
         ),
       ),
       home: const SplashScreen(),
@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
 }
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -86,7 +86,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     child: const Icon(Icons.school, size: 40, color: Colors.white),
                   ),
                   const SizedBox(height: 20),
-                  const Text('ABES Portal', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins-Bold')),
+                  const Text('ABES+', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins-Bold')),
                   const SizedBox(height: 8),
                   FadeTransition(
                     opacity: _fadeAnimation,

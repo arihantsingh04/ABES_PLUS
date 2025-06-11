@@ -3,8 +3,6 @@ import 'package:intl/intl.dart';
 import 'dart:ui';
 import '/utils/helpers.dart';
 import '/services/api_service.dart';
-import '/widgets/glass_card.dart';
-
 class AttendanceDetailsDialog extends StatefulWidget {
   final Map<String, dynamic> item;
   final List<dynamic> dailyAttendance;
@@ -13,13 +11,13 @@ class AttendanceDetailsDialog extends StatefulWidget {
   final Function(DateTimeRange?, String) onFilterChanged;
 
   const AttendanceDetailsDialog({
-    Key? key,
+    super.key,
     required this.item,
     required this.dailyAttendance,
     this.initialPosition,
     this.initialSize,
     required this.onFilterChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<AttendanceDetailsDialog> createState() => _AttendanceDetailsDialogState();
@@ -68,9 +66,6 @@ class _AttendanceDetailsDialogState extends State<AttendanceDetailsDialog> with 
     setState(() => isLoadingMore = true);
     final newData = await ApiService.fetchDailyAttendance(
       widget.item['id'],
-      page: currentPage + 1,
-      dateRange: dateRange,
-      statusFilter: statusFilter,
     );
     if (mounted) {
       setState(() {
@@ -192,8 +187,7 @@ class _AttendanceDetailsDialogState extends State<AttendanceDetailsDialog> with 
                                 lastDate: DateTime.now(),
                                 builder: (context, child) => Theme(
                                   data: Theme.of(context).copyWith(
-                                    colorScheme: Theme.of(context).colorScheme,
-                                    dialogBackgroundColor: Colors.black.withOpacity(0.8),
+                                    colorScheme: Theme.of(context).colorScheme, dialogTheme: DialogThemeData(backgroundColor: Colors.black.withOpacity(0.8)),
                                   ),
                                   child: child!,
                                 ),

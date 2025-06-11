@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import '/auth_screens.dart';
 import '/models/student.dart';
 import '/widgets/student_info_card.dart';
 import '/widgets/attendance_screen.dart';
 import '/utils/helpers.dart';
 import '/services/api_service.dart';
-import '/widgets/glass_card.dart';
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({Key? key}) : super(key: key);
+  const Dashboard({super.key});
 
   @override
   State<Dashboard> createState() => _DashboardState();

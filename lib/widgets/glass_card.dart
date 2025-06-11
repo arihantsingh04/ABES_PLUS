@@ -6,6 +6,7 @@ class GlassCard extends StatelessWidget {
   final double? width, height;
   final EdgeInsets? padding, margin;
   final BorderRadius? borderRadius;
+  final bool lightened; // New parameter
 
   const GlassCard({
     Key? key,
@@ -15,6 +16,7 @@ class GlassCard extends StatelessWidget {
     this.padding,
     this.margin,
     this.borderRadius,
+    this.lightened = false,
   }) : super(key: key);
 
   @override
@@ -26,35 +28,33 @@ class GlassCard extends StatelessWidget {
       margin: margin,
       child: ClipRRect(
         borderRadius: borderRad,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: width,
-            height: height,
-            padding: padding ?? const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: borderRad,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  theme.colorScheme.onBackground.withOpacity(0.1),
-                  theme.colorScheme.onBackground.withOpacity(0.05),
-                ],
-              ),
-              border: Border.all(
-                color: theme.colorScheme.onBackground.withOpacity(0.2),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
+        child: Container(
+          width: width,
+          height: height,
+          padding: padding ?? const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: lightened ? Colors.white.withOpacity(0.15) : Colors.white.withOpacity(0.1),
+            borderRadius: borderRad,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                theme.colorScheme.onBackground.withOpacity(0.10),
+                theme.colorScheme.onBackground.withOpacity(0.01),
               ],
             ),
-            child: child,
+            border: Border.all(
+              color: theme.colorScheme.onBackground.withOpacity(0.2),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
+          child: child,
         ),
       ),
     );

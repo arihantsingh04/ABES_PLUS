@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
@@ -76,31 +75,24 @@ class ApiService {
     }
   }
 
-  static Future<List<dynamic>> fetchDailyAttendance(
-      int cfId, {
-        int page = 1,
-        DateTimeRange? dateRange,
-        String statusFilter = 'All',
-      }) async {
+  static Future<List<dynamic>> fetchDailyAttendance(dynamic courseId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-      final studentId = prefs.getString('student_id') ?? '';
-      debugPrint('Fetching daily attendance for cf_id: $cfId, student_id: $studentId, page: $page');
-      if (token.isEmpty) {
-        debugPrint('Error: No token found in SharedPreferences');
+      final studentNumber = prefs.getString('student_number') ?? '';
+      debugPrint('Fetching daily attendance for course_id: $courseId, student_number: $studentNumber');
+
+      if (token.isEmpty || studentNumber.isEmpty) {
+        debugPrint('Error: Token or student number not found in SharedPreferences');
         return [];
       }
-      String url =
-          "https://abes.platform.simplifii.com/api/v1/cards?type=Attendance&sort_by=-datetime1&equalto___fk_student=$studentId&equalto___fk_mapped_card=$cfId&page=$page&limit=20";
-      if (dateRange != null) {
-        final start = DateFormat('yyyy-MM-dd').format(dateRange.start);
-        final end = DateFormat('yyyy-MM-dd').format(dateRange.end);
-        url += "&date_gte=$start&date_lte=$end";
-      }
-      if (statusFilter != 'All') {
-        url += "&status=$statusFilter";
-      }
+
+      // Convert courseId to String
+      final String courseIdStr = courseId.toString();
+
+      // Construct the URL with dynamic student number
+      final url = "https://abes.platform.simplifii.com/api/v1/cards?type=Attendance&sort_by=+datetime1&equalto___fk_student=$studentNumber&equalto___cf_id=$courseIdStr&token=$token";
+
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -109,8 +101,11 @@ class ApiService {
           'Referer': 'https://abes.web.simplifii.com/',
         },
       );
+
+      debugPrint('Daily attendance API URL: $url');
       debugPrint('Daily attendance API status: ${response.statusCode}');
       debugPrint('Daily attendance API response: ${response.body}');
+
       if (response.statusCode == 200) {
         final List<dynamic> attendanceData = jsonDecode(response.body)['response']['data'] ?? [];
         debugPrint('Daily attendance data count: ${attendanceData.length}');
