@@ -719,14 +719,14 @@ class _DailyAttendanceScreenState extends State<DailyAttendanceScreen> {
                           child: Text(
                             widget.item['cdata']?['course_name'] ?? 'Course',
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               fontFamily: 'Poppins-Bold',
                             ),
                             textAlign: TextAlign.center,
                             maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                            overflow: TextOverflow.visible,
                           ),
                         ),
                       ),
