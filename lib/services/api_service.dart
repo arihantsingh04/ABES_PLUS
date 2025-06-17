@@ -91,7 +91,7 @@ class ApiService {
       final String courseIdStr = courseId.toString();
 
       // Construct the URL with dynamic student number
-      final url = "https://abes.platform.simplifii.com/api/v1/cards?type=Attendance&sort_by=+datetime1&equalto___fk_student=$studentNumber&equalto___cf_id=$courseIdStr&token=$token";
+      final url = "https://abes.platform.simplifii.com/api/v1/cards?type=Attendance&sort_by=-datetime1&equalto___fk_student=$studentNumber&equalto___cf_id=$courseIdStr&token=$token";
 
       final response = await http.get(
         Uri.parse(url),

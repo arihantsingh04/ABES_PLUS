@@ -26,7 +26,7 @@ LinearGradient getProgressGradient(double percentage) {
   if (percentage >= 75) {
     return const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]);
   } else if (percentage >= 60) {
-    return const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]);
+    return const LinearGradient(colors: [Color(0xFFFF6A00), Color(0xFFFF6200)]);
   } else {
     return const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]);
   }
