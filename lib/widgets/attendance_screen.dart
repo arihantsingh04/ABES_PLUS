@@ -4,14 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+import 'dart:async';
 import '/services/api_service.dart';
 import '/widgets/glass_card.dart';
 import '/screens/daily_attendance_screen.dart';
-import 'package:flutter/services.dart'; // For haptic feedback
+import 'package:flutter/services.dart';
 
 class AttendanceScreen extends StatefulWidget {
+  final Map<String, dynamic>? cachedAttendance;
   final VoidCallback? refreshCallback;
-  const AttendanceScreen({Key? key, this.refreshCallback}) : super(key: key);
+  const AttendanceScreen({Key? key, this.cachedAttendance, this.refreshCallback}) : super(key: key);
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
@@ -29,6 +32,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
   String statusFilter = 'All';
   late AnimationController _animationController;
   late Animation<double> _gradientAnimation;
+  bool isOffline = false;
+  Timer? _internetCheckTimer;
+  bool _lastInternetState = true; // Track previous internet state
 
   @override
   void initState() {
@@ -38,20 +44,130 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
       duration: const Duration(milliseconds: 2000),
     );
     _gradientAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-          parent: _animationController, curve: Curves.easeInOutSine),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOutSine),
     );
+    _loadCachedData();
     fetchAttendance().then((_) => _animationController.forward());
+    _startInternetCheck();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _internetCheckTimer?.cancel();
     super.dispose();
   }
 
+  void _startInternetCheck() {
+    _internetCheckTimer = Timer.periodic(Duration(seconds: 5), (_) async {
+      final hasInternet = await _checkInternet();
+      if (hasInternet != _lastInternetState) {
+        setState(() {
+          isOffline = !hasInternet;
+          _lastInternetState = hasInternet;
+        });
+        if (hasInternet) {
+          await fetchAttendance(); // Refresh data when back online
+        } else {
+          _showSnackBar('Offline: Showing saved data', Colors.redAccent);
+        }
+      }
+    });
+  }
+
+  Future<bool> _checkInternet() async {
+    try {
+      final result = await InternetAddress.lookup('google.com').timeout(Duration(seconds: 2));
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 3),
+        content: Row(
+          children: [
+            Icon(
+              message.contains('Offline') ? Icons.wifi_off : Icons.wifi,
+              color: Colors.white,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadCachedData() async {
+    if (widget.cachedAttendance != null) {
+      setState(() {
+        data = widget.cachedAttendance!['data'] ?? [];
+        overallPresent = widget.cachedAttendance!['overallPresent'] ?? 0;
+        overallTotal = widget.cachedAttendance!['overallTotal'] ?? 0;
+        overallPercentage = widget.cachedAttendance!['overallPercentage'] ?? 0.0;
+        isLoading = false;
+        error = '';
+      });
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedAttendance = prefs.getString('cached_attendance');
+      if (cachedAttendance != null) {
+        final attendanceData = jsonDecode(cachedAttendance);
+        setState(() {
+          data = attendanceData['data'] ?? [];
+          overallPresent = attendanceData['overallPresent'] ?? 0;
+          overallTotal = attendanceData['overallTotal'] ?? 0;
+          overallPercentage = attendanceData['overallPercentage'] ?? 0.0;
+          isLoading = false;
+          error = '';
+        });
+      }
+    }
+  }
+
   Future<void> fetchAttendance() async {
-    setState(() => isLoading = true);
+    // Load cached data first to ensure immediate display
+    await _loadCachedData();
+
+    // Check internet connectivity
+    final hasInternet = await _checkInternet();
+    if (!hasInternet) {
+      setState(() {
+        isOffline = true;
+        _lastInternetState = false;
+        isLoading = false;
+        if (data.isEmpty) {
+          error = 'Offline: No cached data available';
+          _showSnackBar(error, Colors.red);
+        } else {
+          _showSnackBar('Offline: Showing cached data', Colors.orange);
+        }
+      });
+      widget.refreshCallback?.call();
+      return;
+    }
+
+    setState(() {
+      isOffline = false;
+      _lastInternetState = true;
+      isLoading = true;
+    });
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
@@ -61,6 +177,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
           error = "No token found";
           isLoading = false;
         });
+        _showSnackBar(error, Colors.red);
         return;
       }
       final attendanceData = await ApiService.fetchAttendance(token);
@@ -70,38 +187,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
         overallTotal = attendanceData['overallTotal'];
         overallPercentage = attendanceData['overallPercentage'];
         isLoading = false;
+        error = '';
+        prefs.setString('cached_attendance', jsonEncode(attendanceData));
       });
+      _showSnackBar('Online: Data refreshed', Colors.blue);
       widget.refreshCallback?.call();
     } catch (e) {
       debugPrint('Attendance fetch error: $e');
       setState(() {
-        error = "Error: $e";
         isLoading = false;
+        if (data.isEmpty) {
+          error = "Error: $e";
+          _showSnackBar(error, Colors.red);
+        }
       });
     }
   }
 
-  void _showAttendanceDetails(BuildContext context, Map<String, dynamic> item,
-      GlobalKey cardKey) async {
-    debugPrint(
-        'Fetching daily attendance for course: ${item['cdata']['course_name']} (cf_id: ${item['id']})');
+  void _showAttendanceDetails(BuildContext context, Map<String, dynamic> item, GlobalKey cardKey) async {
+    debugPrint('Fetching daily attendance for course: ${item['cdata']['course_name']} (cf_id: ${item['id']})');
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) =>
-          Center(
-            child: GlassCard(
-              child: CircularProgressIndicator(color: Theme
-                  .of(context)
-                  .colorScheme
-                  .primary),
-            ),
-          ),
+      builder: (context) => Center(
+        child: GlassCard(
+          child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
+        ),
+      ),
     );
 
-    final dailyAttendance = dailyAttendanceMap[item['id']] ??
-        await ApiService.fetchDailyAttendance(item['id']);
+    final dailyAttendance = dailyAttendanceMap[item['id']] ?? await ApiService.fetchDailyAttendance(item['id']);
     setState(() {
       dailyAttendanceMap[item['id']] = dailyAttendance;
     });
@@ -111,11 +227,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            DailyAttendanceScreen(
-              item: item,
-              dailyAttendance: dailyAttendance,
-            ),
+        builder: (context) => DailyAttendanceScreen(
+          item: item,
+          dailyAttendance: dailyAttendance,
+        ),
       ),
     );
   }
@@ -129,10 +244,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
     if (isLoading) {
       return Center(
         child: GlassCard(
-          child: CircularProgressIndicator(color: Theme
-              .of(context)
-              .colorScheme
-              .primary),
+          child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
         ),
       );
     }
@@ -140,8 +252,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
       return GlassCard(
         child: Text(
           error,
-          style: const TextStyle(
-              color: Colors.red, fontFamily: 'Poppins-Regular'),
+          style: const TextStyle(color: Colors.red, fontFamily: 'Poppins-Regular'),
           textAlign: TextAlign.center,
         ),
       );
@@ -182,10 +293,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               GlassCard(
-                width: (MediaQuery
-                    .of(context)
-                    .size
-                    .width - 48) / 2,
+                width: (MediaQuery.of(context).size.width - 48) / 2,
                 height: 220,
                 lightened: true,
                 padding: EdgeInsets.zero,
@@ -197,15 +305,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
                       right: 0,
                       child: AnimatedBuilder(
                         animation: _gradientAnimation,
-                        builder: (context, child) =>
-                            Container(
-                              height: 220 * overallPercentage / 100 *
-                                  _gradientAnimation.value,
-                              decoration: BoxDecoration(
-                                gradient: attendanceGradient,
-                                borderRadius: BorderRadius.circular(0),
-                              ),
-                            ),
+                        builder: (context, child) => Container(
+                          height: 220 * overallPercentage / 100 * _gradientAnimation.value,
+                          decoration: BoxDecoration(
+                            gradient: attendanceGradient,
+                            borderRadius: BorderRadius.circular(0),
+                          ),
+                        ),
                       ),
                     ),
                     Center(
@@ -213,8 +319,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "${attendancePercentageModifier(
-                                overallPercentage)}%",
+                            "${attendancePercentageModifier(overallPercentage)}%",
                             style: const TextStyle(
                               fontSize: 36,
                               fontWeight: FontWeight.w100,
@@ -240,10 +345,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
                 ),
               ),
               CalculateCard(
-                width: (MediaQuery
-                    .of(context)
-                    .size
-                    .width - 48) / 2,
+                width: (MediaQuery.of(context).size.width - 48) / 2,
                 overallPresent: overallPresent,
                 overallTotal: overallTotal,
               ),
@@ -254,12 +356,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
         ListView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          children: data
+              children: data
               .where((item) => item['cdata']['course_code'] != 'Total')
               .map((item) {
-            final percentage = double.tryParse(
-                item['attendance_summary']['Percent']?.replaceAll('%', '') ??
-                    '0') ?? 0;
+            final percentage =
+                double.tryParse(item['attendance_summary']['Percent']?.replaceAll('%', '') ?? '0') ?? 0;
             final GlobalKey cardKey = GlobalKey();
             return Hero(
               tag: 'attendance-card-${item['id']}',
@@ -286,8 +387,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(14),
                                 color: percentage >= 75
@@ -310,8 +410,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          "Present: ${item['attendance_summary']['Present'] ??
-                              0} / ${item['attendance_summary']['Total'] ?? 0}",
+                          "Present: ${item['attendance_summary']['Present'] ?? 0} / ${item['attendance_summary']['Total'] ?? 0}",
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.white.withOpacity(0.7),
@@ -333,39 +432,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
                                 ),
                                 FractionallySizedBox(
                                   alignment: Alignment.centerLeft,
-                                  widthFactor: (percentage / 100).clamp(
-                                      0.0, 1.0),
+                                  widthFactor: (percentage / 100).clamp(0.0, 1.0),
                                   child: Container(
                                     decoration: BoxDecoration(
                                       gradient: percentage >= 75
                                           ? const LinearGradient(
-                                        begin: Alignment.centerLeft,
-                                        end: Alignment.centerRight,
-                                        colors: [
-                                          Color(0xFF006D4A),
-                                          Color(0xFF00855C),
-                                          Color(0xFF10B981)
-                                        ],
-                                      )
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                          colors: [Color(0xFF006D4A), Color(0xFF00855C), Color(0xFF10B981)])
                                           : percentage >= 60
                                           ? const LinearGradient(
-                                        begin: Alignment.centerLeft,
-                                        end: Alignment.centerRight,
-                                        colors: [
-                                          Color(0xFF994000),
-                                          Color(0xFFB64B00),
-                                          Color(0xFFF97316)
-                                        ],
-                                      )
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                          colors: [Color(0xFF994000), Color(0xFFB64B00), Color(0xFFF97316)])
                                           : const LinearGradient(
-                                        begin: Alignment.centerLeft,
-                                        end: Alignment.centerRight,
-                                        colors: [
-                                          Color(0xFFB91C1C),
-                                          Color(0xFFDC2626),
-                                          Color(0xFFFF2800)
-                                        ],
-                                      ),
+                                          begin: Alignment.centerLeft,
+                                          end: Alignment.centerRight,
+                                          colors: [Color(0xFFB91C1C), Color(0xFFDC2626), Color(0xFFFF2800)]),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
@@ -380,13 +463,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> with TickerProvider
                 ),
               ),
             );
-          })
-              .toList(),
+          }).toList(),
         ),
       ],
     );
   }
 }
+
 class CalculateCard extends StatefulWidget {
   final double width;
   final int overallPresent;
@@ -483,7 +566,7 @@ class _CalculateCardState extends State<CalculateCard> with SingleTickerProvider
               backgroundColor: const Color(0xFF0F57FF),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Set',style: TextStyle(color: Colors.white)),
+            child: const Text('Set', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -494,7 +577,7 @@ class _CalculateCardState extends State<CalculateCard> with SingleTickerProvider
     final parsedValue = double.tryParse(value) ?? targetAttendance;
     final clampedValue = parsedValue.clamp(0.0, 100.0);
     setState(() {
-      targetAttendance = clampedValue.roundToDouble(); // 1% increments
+      targetAttendance = clampedValue.roundToDouble();
       _inputController.text = targetAttendance.round().toString();
       _scrollController.animateToItem(
         targetAttendance.round(),
@@ -518,7 +601,7 @@ class _CalculateCardState extends State<CalculateCard> with SingleTickerProvider
 
     final target = targetAttendance / 100;
     final current = present / total;
-    final daysPerLecture = 10; // Assuming 10 lectures per day for estimation
+    final daysPerLecture = 10;
     DateTime targetDate = DateTime.now();
 
     if (current < target) {
@@ -540,9 +623,8 @@ class _CalculateCardState extends State<CalculateCard> with SingleTickerProvider
   Widget build(BuildContext context) {
     return GlassCard(
       width: widget.width,
-      height: 220, // Match Overall Attendance Card height
-
-      padding: const EdgeInsets.fromLTRB(16,20,16,0),
+      height: 220,
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       lightened: true,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -561,16 +643,16 @@ class _CalculateCardState extends State<CalculateCard> with SingleTickerProvider
             ),
           ),
           SizedBox(
-            height: 100, // Larger slider
+            height: 100,
             child: ListWheelScrollView.useDelegate(
               controller: _scrollController,
-              itemExtent: 40, // Larger items
+              itemExtent: 40,
               perspective: 0.005,
               diameterRatio: 1.5,
               physics: const FixedExtentScrollPhysics(),
               onSelectedItemChanged: (index) {
                 setState(() {
-                  targetAttendance = index.toDouble(); // 1% increments
+                  targetAttendance = index.toDouble();
                   _inputController.text = targetAttendance.round().toString();
                 });
                 _animationController.forward(from: 0);
@@ -592,8 +674,8 @@ class _CalculateCardState extends State<CalculateCard> with SingleTickerProvider
                   return Center(
                     child: Container(
                       height: isSelected ? 50 : 40,
+                      width: isSelected ? 80 : 48,
                       alignment: Alignment.center,
-                      width: 80, // Wider for larger items
                       decoration: isSelected
                           ? BoxDecoration(
                         gradient: LinearGradient(
@@ -611,7 +693,7 @@ class _CalculateCardState extends State<CalculateCard> with SingleTickerProvider
                           child: Text(
                             '${value.round()}%',
                             style: TextStyle(
-                              fontSize: isSelected ? 20 : 16, // Larger font
+                              fontSize: isSelected ? 20 : 16,
                               color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
                               fontFamily: 'Poppins-SemiBold',
                             ),
@@ -623,21 +705,21 @@ class _CalculateCardState extends State<CalculateCard> with SingleTickerProvider
                     ),
                   );
                 },
-                childCount: 101, // 0% to 100% in 1% steps
+                childCount: 101,
               ),
             ),
           ),
           SizedBox(
-            height: 50, // Fit larger slider
+            height: 50,
             child: Text(
               calculateAttendanceGoal(widget.overallPresent, widget.overallTotal),
               style: TextStyle(
-                fontSize: 11, // Smaller for conciseness
+                fontSize: 11,
                 color: Colors.white.withOpacity(0.7),
                 fontFamily: 'Poppins-Regular',
               ),
               textAlign: TextAlign.center,
-              maxLines: 2, // Tighter display
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               semanticsLabel: calculateAttendanceGoal(widget.overallPresent, widget.overallTotal).replaceAll('\n', ' '),
             ),

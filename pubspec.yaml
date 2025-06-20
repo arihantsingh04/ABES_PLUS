@@ -41,7 +41,8 @@ dependencies:
   network_info_plus: ^4.1.0
   permission_handler: ^11.3.0
   connectivity_plus: ^6.0.3
-  google_nav_bar: ^5.0.6
+  flashy_tab_bar2: ^0.0.10
+  url_launcher: ^6.3.0
   flutter_animate: ^4.5.0
 
   # The following adds the Cupertino Icons font to your application.

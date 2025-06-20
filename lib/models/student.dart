@@ -11,12 +11,21 @@ class Student {
     required this.branch,
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'email': email,
+      'rollNumber': rollNumber,
+      'branch': branch,
+    };
+  }
+
   factory Student.fromJson(Map<String, dynamic> json) {
     return Student(
-      name: json['name'] ?? 'N/A',
+      name: json['name'] ?? 'Student',
       email: json['email'] ?? 'N/A',
-      rollNumber: json['roll_no'] ?? 'N/A',
-      branch: json['branch'] ?? 'N/A',
+      rollNumber: json['rollNumber'] ?? '',
+      branch: json['branch'] ?? 'Unknown',
     );
   }
 }

@@ -18,7 +18,7 @@ class AnimatedBackground extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color(0xFF05060F),
+              const Color(0xFF06091B),
               const Color(0xFF000000),
             ],
           ),
@@ -84,12 +84,15 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token != null) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', token);
-          await prefs.setString('name', json['response']?["name"] ?? username);
-          final studentId = json['sub']?.toString() ?? username;
+          await prefs.setString('name', json['response']?['name'] ?? username);
+          final studentId = json['response']?['unique_code']?.toString() ?? username;
           final studentNumber = json['response']?['id']?.toString() ?? studentId;
           await prefs.setString('student_id', studentId);
           await prefs.setString('student_number', studentNumber);
-          debugPrint('Stored student_id: $studentId, student_number: $studentNumber');
+          // Save string10 as user_pin
+          final userPin = json['response']?['string10']?.toString() ?? '0000';
+          await prefs.setString('user_pin', userPin);
+          debugPrint('Stored student_id: $studentId, student_number: $studentNumber, user_pin: $userPin');
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const Dashboard()));
         } else {
           setState(() => _errorMessage = 'Invalid credentials');
